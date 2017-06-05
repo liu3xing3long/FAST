@@ -11,11 +11,13 @@ class QElapsedTimer;
 class QComboBox;
 class QVBoxLayout;
 class QListWidget;
+class QSlider;
 
 namespace fast {
 
 class PipelineWidget;
 class ImageFileStreamer;
+class Image;
 
 class GUI : public Window {
     FAST_OBJECT(GUI)
@@ -31,10 +33,11 @@ class GUI : public Window {
         void refreshStreams();
 
         SharedPointer<ImageFileStreamer> mStreamer;
-        std::vector<std::string> mStreamNames;
         std::vector<Pipeline> mPipelines;
+        std::map<std::string, std::vector<SharedPointer<Image> > > mImageData;
 
         QListWidget* mList;
+        QSlider* mSlider;
         QComboBox* mSelectPipeline;
         QPushButton* mPlayPauseButton;
         QVBoxLayout* menuLayout;

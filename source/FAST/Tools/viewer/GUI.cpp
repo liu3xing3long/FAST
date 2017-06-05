@@ -21,6 +21,7 @@
 #include <fstream>
 #include <QDesktopWidget>
 #include <QApplication>
+#include <FAST/Tests/DummyObjects.hpp>
 
 
 namespace fast {
@@ -149,11 +150,11 @@ GUI::GUI() {
     QObject::connect(mPlayPauseButton, &QPushButton::clicked, std::bind(&GUI::playPause, this));
     playbackLayout->addWidget(mPlayPauseButton);
 
-    QSlider* slider = new QSlider(Qt::Horizontal);
-    playbackLayout->addWidget(slider);
-    slider->setTickInterval(10);
-    slider->setRange(0, 1234);
-    slider->setTickPosition(QSlider::TicksAbove);
+    mSlider = new QSlider(Qt::Horizontal);
+    playbackLayout->addWidget(mSlider);
+    mSlider->setTickInterval(10);
+    mSlider->setRange(0, 1234);
+    mSlider->setTickPosition(QSlider::TicksAbove);
 
     viewLayout->addLayout(playbackLayout);
 
@@ -209,10 +210,16 @@ void GUI::selectPipeline() {
     stopComputationThread();
 
     std::vector<std::string> inputData;
+    std::vector<Image::pointer> frames;
     for(QListWidgetItem* widget : mList->selectedItems()) {
 		std::string asd = widget->text().toUtf8().constData();
         inputData.push_back(asd);
+        std::cout << asd << std::endl;
+        for(Image::pointer image : mImageData.at(asd)) {
+            frames.push_back(image);
+        }
     }
+    mSlider->setRange(0, frames.size());
     mStreamer = ImageFileStreamer::New();
     mStreamer->setFilenameFormats(inputData);
     mStreamer->enableLooping();
@@ -269,6 +276,23 @@ void GUI::addInputData() {
 			std::string filename = qfilename.toUtf8().constData();
             filename = replace(filename, "_0.", "_#.");
             mList->addItem(filename.c_str());
+            // Load entire data into a vector
+            ImageFileStreamer::pointer streamer = ImageFileStreamer::New();
+            streamer->setFilenameFormat(filename);
+            streamer->setStreamingMode(STREAMING_MODE_PROCESS_ALL_FRAMES);
+            DynamicData::pointer data = streamer->getOutputData<Image>();
+            streamer->update();
+            std::vector<Image::pointer> frames;
+            DummyProcessObject::pointer dummy = DummyProcessObject::New();
+            while(!streamer->hasReachedEnd() || !data->hasReachedEnd()) {
+                std::cout << "Adding frame.." << std::endl;
+                // TODO should probably block inside getNextFrame, if no frame exist
+                Image::pointer image = data->getNextFrame(dummy);
+                frames.push_back(image);
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            }
+            std::cout << filename << std::endl;
+            mImageData[filename.c_str()] = frames;
         }
     }
 }
